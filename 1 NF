@@ -1,0 +1,50 @@
+-- Create the original table (if it doesn't exist)
+CREATE TABLE IF NOT EXISTS ProductDetail (
+    OrderID INT,
+    CustomerName VARCHAR(100),
+    Products VARCHAR(255)
+);
+
+-- Insert sample data
+INSERT INTO ProductDetail VALUES 
+(101, 'John Doe', 'Laptop, Mouse'),
+(102, 'Jane Smith', 'Tablet, Keyboard, Mouse'),
+(103, 'Emily Clark', 'Phone');
+
+-- Transform to 1NF by creating a new table with one product per row
+CREATE TABLE ProductDetail_1NF AS
+SELECT 
+    OrderID,
+    CustomerName,
+    TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(Products, ',', n), ',', -1)) AS Product
+FROM ProductDetail
+JOIN (SELECT 1 AS n UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5) numbers
+    ON CHAR_LENGTH(Products) - CHAR_LENGTH(REPLACE(Products, ',', '')) >= n - 1
+ORDER BY OrderID;
+
+-- Alternative approach using a recursive CTE (for MySQL 8.0+)
+/*
+WITH RECURSIVE split_products AS (
+    SELECT 
+        OrderID,
+        CustomerName,
+        Products,
+        TRIM(SUBSTRING_INDEX(Products, ',', 1)) AS Product,
+        TRIM(SUBSTRING(Products, LENGTH(SUBSTRING_INDEX(Products, ',', 1)) + 2)) AS remaining_products
+    FROM ProductDetail
+    
+    UNION ALL
+    
+    SELECT 
+        OrderID,
+        CustomerName,
+        Products,
+        TRIM(SUBSTRING_INDEX(remaining_products, ',', 1)) AS Product,
+        TRIM(SUBSTRING(remaining_products, LENGTH(SUBSTRING_INDEX(remaining_products, ',', 1)) + 2)) AS remaining_products
+    FROM split_products
+    WHERE remaining_products != ''
+)
+SELECT OrderID, CustomerName, Product
+FROM split_products
+ORDER BY OrderID;
+*/
